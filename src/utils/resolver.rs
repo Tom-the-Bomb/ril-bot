@@ -58,6 +58,7 @@ impl Default for ImageResolver {
 
 impl ImageResolver {
     /// returns a new instance of [`ImageResolver`] with default max size
+    #[must_use]
     pub fn new() -> Self {
         Self {
             max_size: DEFAULT_MAX_SIZE,
@@ -171,6 +172,28 @@ impl ImageResolver {
         Ok(source)
     }
 
+    /// fetches the member's face but fallbacks to `png` format instead of `webp`
+    #[must_use]
+    fn member_avatar_url(member: &Member) -> String {
+        let is_gif = member.avatar.as_ref()
+            .or(member.user.avatar.as_ref())
+            .map_or(false, |av| av.starts_with("a_"));
+
+        member.face()
+            .replace(".webp", if is_gif { ".gif" } else { ".png" })
+    }
+
+    /// fetches the user's face but fallbacks to `png` format instead of `webp`
+    #[must_use]
+    fn user_avatar_url(user: &User) -> String {
+        let is_gif = user.avatar.as_ref()
+            .map(|av| av.starts_with("a_"))
+            .unwrap_or(false);
+
+        user.face()
+            .replace(".webp", if is_gif { ".gif" } else { ".png" })
+    }
+
     /// run's conversions on the argument and referenced message's content
     pub async fn try_conversions(
         &self,
@@ -183,13 +206,13 @@ impl ImageResolver {
             Member::convert(ctx, guild, channel, &*arg)
             .await
         {
-            Some(url_to_bytes(out.face())
+            Some(url_to_bytes(Self::member_avatar_url(&out))
                 .await?)
         } else if let Ok(out) =
             User::convert(ctx, guild, channel, &*arg)
             .await
         {
-            Some(url_to_bytes(out.face())
+            Some(url_to_bytes(Self::user_avatar_url(&out))
                 .await?)
         } else if let Ok(out) =
             Emoji::convert(ctx, guild, channel, &*arg)
@@ -271,6 +294,11 @@ impl ImageResolver {
             }
         }
 
-        Ok(url_to_bytes(message.author.face()).await?)
+        let fallback = url_to_bytes(
+            Self::user_avatar_url(&message.author)
+        )
+            .await?;
+
+        Ok(fallback)
     }
 }
