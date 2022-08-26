@@ -4,7 +4,7 @@
 use serenity::{
     prelude::*,
     utils::ArgumentConvert,
-    framework::standard::{Args, CommandError},
+    framework::standard::Args,
     model::{
         user::User,
         channel::Message,
@@ -19,9 +19,11 @@ use serenity::{
     },
 };
 
-use std::fmt;
 use regex::Regex;
-use super::helpers::url_to_bytes;
+use super::{
+    Error,
+    helpers::url_to_bytes,
+};
 
 
 lazy_static::lazy_static! {
@@ -46,59 +48,6 @@ pub const DEFAULT_MAX_SIZE: u64 = 16_000_000;
 pub struct ImageResolver {
     /// indicates the max size in bytes that we will accept for the provided image
     max_size: u64,
-}
-
-/// An error enum representing all the error types raised when resolving an image in [`ImageResolver`]
-#[derive(Debug)]
-pub enum Error {
-    /// Returned when the provided image exceeds the maxiumum size
-    ImageTooLarge(u64, u64),
-    /// Returned when the image URL is invalid or returned a non-ok status code
-    FetchUrlError,
-    /// Returned when the content-type of the provided source is not of `image/*`
-    InvalidContentType,
-    /// Propogated from [`reqwest::Error`]
-    RequestError(reqwest::Error),
-    /// Propogated from [`SerenityError`]
-    SerenityError(SerenityError),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(
-            match self {
-                Self::ImageTooLarge(size, max_size) =>
-                    format!("Provided Image has a size of `{}` which exceeds the limit of `{}`", size, max_size),
-                Self::FetchUrlError =>
-                    format!("Something went wrong during the HTTP request to the provided URL"),
-                Self::InvalidContentType =>
-                    String::from("Only content types of `image/*` are supported"),
-                Self::RequestError(err) =>
-                    format!("{}", err),
-                Self::SerenityError(err) =>
-                    format!("{}", err),
-            }
-            .as_str()
-        )
-    }
-}
-
-impl From<reqwest::Error> for Error {
-    fn from(err: reqwest::Error) -> Self {
-        Self::RequestError(err)
-    }
-}
-
-impl From<SerenityError> for Error {
-    fn from(err: SerenityError) -> Self {
-        Self::SerenityError(err)
-    }
-}
-
-impl From<Error> for CommandError {
-    fn from(err: Error) -> Self {
-        Self::from(err.to_string())
-    }
 }
 
 impl Default for ImageResolver {
@@ -166,12 +115,12 @@ impl ImageResolver {
 
                     let size = bytes.len() as u64;
                     if size < self.max_size {
-                        return Ok(Some(bytes))
+                        return Ok(Some(bytes));
                     } else {
-                        return Err(Error::ImageTooLarge(size, self.max_size))
+                        return Err(Error::ImageTooLarge(size, self.max_size));
                     }
                 } else {
-                    return Err(Error::ImageTooLarge(file.size, self.max_size))
+                    return Err(Error::ImageTooLarge(file.size, self.max_size));
                 }
             }
         }
@@ -183,7 +132,7 @@ impl ImageResolver {
     async fn get_sticker_image(&self, stickers: &Vec<StickerItem>) -> Result<Option<Vec<u8>>, Error> {
         for sticker in stickers {
             if let Some(url) = sticker.image_url() {
-                return Ok(Some(url_to_bytes(url).await?))
+                return Ok(Some(url_to_bytes(url).await?));
             }
         }
 
@@ -194,9 +143,9 @@ impl ImageResolver {
     async fn get_embed_image(&self, embeds: &Vec<Embed>) -> Result<Option<Vec<u8>>, Error> {
         for embed in embeds {
             if let Some(image) = &embed.image {
-                return Ok(Some(self.resolve_url(&image.url).await?))
+                return Ok(Some(self.resolve_url(&image.url).await?));
             } else if let Some(thumbnail) = &embed.thumbnail {
-                return Ok(Some(self.resolve_url(&thumbnail.url).await?))
+                return Ok(Some(self.resolve_url(&thumbnail.url).await?));
             }
         }
 
@@ -282,7 +231,7 @@ impl ImageResolver {
                 .await
                 .transpose()
             {
-                return bytes
+                return bytes;
             }
         }
 
@@ -290,7 +239,7 @@ impl ImageResolver {
             self.get_attachments(message)
             .await?
         {
-            return Ok(bytes)
+            return Ok(bytes);
         }
 
         if let Some(referenced) = &message.referenced_message {
@@ -298,7 +247,7 @@ impl ImageResolver {
                 self.get_attachments(referenced)
                 .await?
             {
-                return Ok(bytes)
+                return Ok(bytes);
             }
 
             if referenced.content.len() > 0 {
@@ -316,7 +265,7 @@ impl ImageResolver {
                         .await
                         .transpose()
                     {
-                        return bytes
+                        return bytes;
                     }
                 }
             }

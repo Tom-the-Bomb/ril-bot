@@ -1,5 +1,5 @@
 use reqwest::IntoUrl;
-use super::resolver::Error;
+use super::error::Error;
 
 pub async fn url_to_bytes<T: IntoUrl>(url: T) -> Result<Vec<u8>, Error> {
     let result = reqwest::get(url)
