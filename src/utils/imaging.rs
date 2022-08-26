@@ -7,7 +7,7 @@ use serenity::{
 
 use ril::prelude::*;
 
-use std::borrow::Cow;
+use std::{time::Instant, borrow::Cow};
 use super::{Error, ImageResolver};
 
 pub type Frames<'a> = DynamicFrameIterator<Rgba, &'a [u8]>;
@@ -16,15 +16,19 @@ pub async fn send_output<'a, T>(
     ctx: &Context,
     message: &Message,
     output: T,
+    time: Instant,
     is_gif: bool,
 ) -> Result<()>
-    where T: Into<Cow<'a, [u8]>>
+where
+    T: Into<Cow<'a, [u8]>>
 {
+    let content = format!("**Process Time:** `{} ms`", time.elapsed().as_millis());
     let format = if is_gif { "gif" } else { "png" };
 
     message.channel_id.send_message(ctx,
         |msg| {
-            msg.reference_message(message)
+            msg.content(content)
+                .reference_message(message)
                 .add_file(
                     AttachmentType::Bytes {
                         data: output.into(),
@@ -50,6 +54,7 @@ where
         .resolve(ctx, message, &mut args)
         .await?;
 
+    let instant = Instant::now();
     let (result, is_gif) = tokio::task::spawn_blocking(
         move || -> ril::Result<(Vec<u8>, bool)> {
             let image = ImageSequence::<Rgba>::from_bytes_inferred(&resolved[..])?;
@@ -72,13 +77,8 @@ where
     .await?
     .map_err(|e| Error::from(e))?;
 
-    send_output(
-        ctx,
-        message,
-        result,
-        is_gif,
-    )
-    .await?;
+    send_output(ctx, message, result, instant, is_gif)
+        .await?;
 
     Ok(())
 }
