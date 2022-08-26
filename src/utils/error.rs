@@ -7,6 +7,8 @@ use serenity::framework::standard::CommandError;
 pub enum Error {
     /// Returned when the provided image exceeds the maxiumum size
     ImageTooLarge(u64, u64),
+    /// Returned in [`super::resolver::ImageResolver::convert_emoji`] when an emoji could not be parsed from the argument
+    EmojiParseError(String),
     /// Returned when the image URL is invalid or returned a non-ok status code
     FetchUrlError,
     /// Returned when the content-type of the provided source is not of `image/*`
@@ -25,6 +27,8 @@ impl fmt::Display for Error {
             match self {
                 Self::ImageTooLarge(size, max_size) =>
                     format!("Provided Image has a size of `{}` which exceeds the limit of `{}`", size, max_size),
+                Self::EmojiParseError(argument) =>
+                    format!("An emoji could not be parsed from the provided argument: `{}`", argument),
                 Self::FetchUrlError =>
                     format!("Something went wrong during the HTTP request to the provided URL"),
                 Self::InvalidContentType =>

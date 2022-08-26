@@ -28,6 +28,8 @@ use super::{
 
 lazy_static::lazy_static! {
     static ref WS_REGEX: Regex = Regex::new(r"\s+").unwrap();
+    static ref EMOJI_REGEX: Regex = Regex::new(r"<(a?):([a-zA-Z0-9_]{1,32}):([0-9]{15,20})>").unwrap();
+    static ref ID_REGEX: Regex = Regex::new(r"([0-9]{15,20})$").unwrap();
 }
 
 /// the default max size for resolved images: 16 MB
@@ -194,6 +196,32 @@ impl ImageResolver {
             .replace(".webp", if is_gif { ".gif" } else { ".png" })
     }
 
+    pub async fn convert_emoji(argument: &str) -> Result<Vec<u8>, Error> {
+        let (animated, id) =
+            if let Some(captures) = EMOJI_REGEX.captures(argument)
+        {
+            (
+                captures.get(1)
+                    .is_some(),
+                captures.get(3)
+                    .map(|id| id.as_str().to_string()),
+            )
+        } else if let Some(mat) = ID_REGEX.find(argument) {
+            (false, Some(mat.as_str().to_string()))
+        } else {
+            (false, None)
+        };
+
+        let id = id.ok_or_else(||
+            Error::EmojiParseError(argument.to_string())
+        )?;
+
+        let fmt = if animated { "gif" } else { "png" };
+        let url = format!("https://cdn.discordapp.com/emojis/{id}.{fmt}");
+
+        Ok(url_to_bytes(url).await?)
+    }
+
     /// run's conversions on the argument and referenced message's content
     pub async fn try_conversions(
         &self,
@@ -220,6 +248,11 @@ impl ImageResolver {
         {
             Some(url_to_bytes(out.url())
                 .await?)
+        } else if let Ok(out) =
+            Self::convert_emoji(&*arg)
+            .await
+        {
+            Some(out)
         } else if let Ok(out) =
             url_to_bytes(format!("https://emojicdn.elk.sh/{arg}?style=twitter"))
                 .await

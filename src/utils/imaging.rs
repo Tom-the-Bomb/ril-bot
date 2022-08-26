@@ -16,13 +16,13 @@ pub async fn send_output<'a, T>(
     ctx: &Context,
     message: &Message,
     output: T,
-    time: Instant,
+    elapsed: u128,
     is_gif: bool,
 ) -> Result<()>
 where
     T: Into<Cow<'a, [u8]>>
 {
-    let content = format!("**Process Time:** `{} ms`", time.elapsed().as_millis());
+    let content = format!("**Process Time:** `{} ms`", elapsed);
     let format = if is_gif { "gif" } else { "png" };
 
     message.channel_id.send_message(ctx,
@@ -77,7 +77,8 @@ where
     .await?
     .map_err(|e| Error::from(e))?;
 
-    send_output(ctx, message, result, instant, is_gif)
+    let elapsed = instant.elapsed().as_millis();
+    send_output(ctx, message, result, elapsed, is_gif)
         .await?;
 
     Ok(())
