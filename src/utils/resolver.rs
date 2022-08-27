@@ -20,6 +20,7 @@ use serenity::{
 };
 
 use regex::Regex;
+use crate::ClientData;
 use super::{
     Error,
     helpers::url_to_bytes,
@@ -68,16 +69,22 @@ impl ImageResolver {
     }
 
     /// a method to resolve a user inputted URL, with many checks
-    pub async fn resolve_url<T: AsRef<str>>(&self, arg: T) -> Result<Vec<u8>, Error> {
+    pub async fn resolve_url<T: AsRef<str>>(&self, client: Option<&reqwest::Client>, arg: T) -> Result<Vec<u8>, Error> {
         let arg = arg
             .as_ref()
             .trim()
             .trim_start_matches('<')
             .trim_end_matches('>');
 
-        let response = reqwest::get(arg)
-            .await
-            .map_err(|_| Error::FetchUrlError)?;
+        let response = if let Some(client) = client {
+            client.get(arg)
+                .send()
+                .await
+        } else {
+            reqwest::get(arg)
+                .await
+        }
+        .map_err(|_| Error::FetchUrlError)?;
 
         if response.status().is_success() {
             if response.headers()
@@ -132,10 +139,14 @@ impl ImageResolver {
     }
 
     /// called by [`Self::get_attachments`], tries to resolve an image from message stickers
-    async fn get_sticker_image(&self, stickers: &Vec<StickerItem>) -> Result<Option<Vec<u8>>, Error> {
+    async fn get_sticker_image(
+        &self,
+        client: Option<&reqwest::Client>,
+        stickers: &Vec<StickerItem>,
+    ) -> Result<Option<Vec<u8>>, Error> {
         for sticker in stickers {
             if let Some(url) = sticker.image_url() {
-                return Ok(Some(url_to_bytes(url).await?));
+                return Ok(Some(url_to_bytes(client, url).await?));
             }
         }
 
@@ -143,12 +154,15 @@ impl ImageResolver {
     }
 
     /// called by [`Self::get_attachments`], tries to resolve an image from message embeds
-    async fn get_embed_image(&self, embeds: &Vec<Embed>) -> Result<Option<Vec<u8>>, Error> {
+    async fn get_embed_image(&self,
+        client: Option<&reqwest::Client>,
+        embeds: &Vec<Embed>,
+    ) -> Result<Option<Vec<u8>>, Error> {
         for embed in embeds {
             if let Some(image) = &embed.image {
-                return Ok(Some(self.resolve_url(&image.url).await?));
+                return Ok(Some(self.resolve_url(client, &image.url).await?));
             } else if let Some(thumbnail) = &embed.thumbnail {
-                return Ok(Some(self.resolve_url(&thumbnail.url).await?));
+                return Ok(Some(self.resolve_url(client, &thumbnail.url).await?));
             }
         }
 
@@ -156,7 +170,11 @@ impl ImageResolver {
     }
 
     /// tries to resolve attachments: (files, stickers and embeds)
-    async fn get_attachments(&self, message: &Message) -> Result<Option<Vec<u8>>, Error> {
+    async fn get_attachments(
+        &self,
+        client: Option<&reqwest::Client>,
+        message: &Message,
+    ) -> Result<Option<Vec<u8>>, Error> {
         let mut source: Option<Vec<u8>> = None;
 
         if !message.attachments.is_empty() {
@@ -164,11 +182,11 @@ impl ImageResolver {
         }
 
         if source.is_none() && !message.sticker_items.is_empty() {
-            source = self.get_sticker_image(&message.sticker_items).await?;
+            source = self.get_sticker_image(client,&message.sticker_items).await?;
         }
 
         if source.is_none() && !message.embeds.is_empty() {
-            source = self.get_embed_image(&message.embeds).await?;
+            source = self.get_embed_image(client, &message.embeds).await?;
         }
 
         Ok(source)
@@ -196,7 +214,8 @@ impl ImageResolver {
             .replace(".webp", if is_gif { ".gif" } else { ".png" })
     }
 
-    pub async fn convert_emoji(argument: &str) -> Result<Vec<u8>, Error> {
+    /// a method to fetch the emoji image from a `<:name:id>` formatted emoji or simply an `id`
+    pub async fn convert_emoji(client: Option<&reqwest::Client>, argument: &str) -> Result<Vec<u8>, Error> {
         let (animated, id) =
             if let Some(captures) = EMOJI_REGEX.captures(argument)
         {
@@ -219,12 +238,13 @@ impl ImageResolver {
         let fmt = if animated { "gif" } else { "png" };
         let url = format!("https://cdn.discordapp.com/emojis/{id}.{fmt}");
 
-        Ok(url_to_bytes(url).await?)
+        Ok(url_to_bytes(client, url).await?)
     }
 
     /// run's conversions on the argument and referenced message's content
     pub async fn try_conversions(
         &self,
+        client: Option<&reqwest::Client>,
         ctx: &Context,
         guild: Option<GuildId>,
         channel: Option<ChannelId>,
@@ -234,32 +254,32 @@ impl ImageResolver {
             Member::convert(ctx, guild, channel, &*arg)
             .await
         {
-            Some(url_to_bytes(Self::member_avatar_url(&out))
+            Some(url_to_bytes(client, Self::member_avatar_url(&out))
                 .await?)
         } else if let Ok(out) =
             User::convert(ctx, guild, channel, &*arg)
             .await
         {
-            Some(url_to_bytes(Self::user_avatar_url(&out))
+            Some(url_to_bytes(client, Self::user_avatar_url(&out))
                 .await?)
         } else if let Ok(out) =
             Emoji::convert(ctx, guild, channel, &*arg)
             .await
         {
-            Some(url_to_bytes(out.url())
+            Some(url_to_bytes(client, out.url())
                 .await?)
         } else if let Ok(out) =
-            Self::convert_emoji(&*arg)
+            Self::convert_emoji(client, &*arg)
             .await
         {
             Some(out)
         } else if let Ok(out) =
-            url_to_bytes(format!("https://emojicdn.elk.sh/{arg}?style=twitter"))
+            url_to_bytes(client, format!("https://emojicdn.elk.sh/{arg}?style=twitter"))
                 .await
         {
             Some(out)
         } else if let Ok(out) =
-            match self.resolve_url(arg)
+            match self.resolve_url(client, arg)
                 .await
             {
                 Err(err @ Error::ImageTooLarge(..)) => return Err(err),
@@ -276,9 +296,16 @@ impl ImageResolver {
     pub async fn resolve(&self, ctx: &Context, message: &Message, args: &mut Args) -> Result<Vec<u8>, Error> {
         let arg = args.single_quoted::<String>().ok();
 
+        let client_data = ctx.data.read()
+            .await;
+
+        let client = client_data
+            .get::<ClientData>();
+
         if let Some(arg) = arg {
             if let Some(bytes) =
                 self.try_conversions(
+                    client,
                     ctx,
                     message.guild_id,
                     Some(message.channel_id),
@@ -292,7 +319,7 @@ impl ImageResolver {
         }
 
         if let Some(bytes) =
-            self.get_attachments(message)
+            self.get_attachments(client, message)
             .await?
         {
             return Ok(bytes);
@@ -300,7 +327,7 @@ impl ImageResolver {
 
         if let Some(referenced) = &message.referenced_message {
             if let Some(bytes) =
-                self.get_attachments(referenced)
+                self.get_attachments(client, referenced)
                 .await?
             {
                 return Ok(bytes);
@@ -313,6 +340,7 @@ impl ImageResolver {
 
                 if let Some(content) = content {
                     if let Some(bytes) = self.try_conversions(
+                            client,
                             ctx,
                             referenced.guild_id,
                             Some(referenced.channel_id),
@@ -328,7 +356,8 @@ impl ImageResolver {
         }
 
         let fallback = url_to_bytes(
-            Self::user_avatar_url(&message.author)
+            client,
+            Self::user_avatar_url(&message.author),
         )
             .await?;
 

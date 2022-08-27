@@ -35,14 +35,20 @@ struct Imaging;
 
 struct Handler;
 
+struct ClientData;
+
 #[async_trait]
 impl EventHandler for Handler {
     async fn ready(&self, _ctx: Context, data: Ready) {
         println!("Bot is ready!\nLogged in as {} ({})",
             data.user.tag(),
-            data.user.id
+            data.user.id,
         );
     }
+}
+
+impl TypeMapKey for ClientData {
+    type Value = reqwest::Client;
 }
 
 #[hook]
@@ -78,6 +84,10 @@ async fn main() {
         .framework(framework)
         .await
         .unwrap();
+    {
+        let mut data = client.data.write().await;
+        data.insert::<ClientData>(reqwest::Client::new());
+    }
 
     client.start()
         .await
