@@ -29,8 +29,8 @@ use super::{
 
 lazy_static::lazy_static! {
     static ref WS_REGEX: Regex = Regex::new(r"\s+").unwrap();
-    static ref EMOJI_REGEX: Regex = Regex::new(r"<(a?):([a-zA-Z0-9_]{1,32}):([0-9]{15,20})>").unwrap();
-    static ref ID_REGEX: Regex = Regex::new(r"([0-9]{15,20})$").unwrap();
+    static ref EMOJI_REGEX: Regex = Regex::new(r"^<(a?):([a-zA-Z0-9_]{1,32}):([0-9]{15,20})>$").unwrap();
+    static ref ID_REGEX: Regex = Regex::new(r"^([0-9]{15,20})$").unwrap();
 }
 
 /// the default max size for resolved images: 16 MB
@@ -72,9 +72,9 @@ impl ImageResolver {
     pub async fn resolve_url<T: AsRef<str>>(&self, client: Option<&reqwest::Client>, arg: T) -> Result<Vec<u8>, Error> {
         let arg = arg
             .as_ref()
-            .trim()
             .trim_start_matches('<')
-            .trim_end_matches('>');
+            .trim_end_matches('>')
+            .trim();
 
         let response = if let Some(client) = client {
             client.get(arg)
@@ -294,7 +294,8 @@ impl ImageResolver {
 
     /// the primary method to call to resolve an image from the provided `context`, `message` and `args`
     pub async fn resolve(&self, ctx: &Context, message: &Message, args: &mut Args) -> Result<Vec<u8>, Error> {
-        let arg = args.single_quoted::<String>().ok();
+        let arg = args.single_quoted::<String>().ok()
+            .map(|s| s.trim().to_string());
 
         let client_data = ctx.data.read()
             .await;

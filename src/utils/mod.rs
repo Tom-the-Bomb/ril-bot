@@ -1,3 +1,5 @@
+//! folder containg various utility functions for the bot
+
 pub use resolver::ImageResolver;
 pub use error::Error;
 

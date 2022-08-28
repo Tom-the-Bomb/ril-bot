@@ -1,3 +1,5 @@
+//! Contains general utility functions for image processing
+
 use serenity::{
     Result,
     prelude::*,
@@ -12,6 +14,8 @@ use super::{Error, ImageResolver};
 
 pub type Frames<'a> = DynamicFrameIterator<Rgba, &'a [u8]>;
 
+/// a helper function to send the output image to the discord channel,
+/// used by [`do_command`]
 pub async fn send_output<'a, T>(
     ctx: &Context,
     message: &Message,
@@ -41,6 +45,9 @@ where
     Ok(())
 }
 
+/// a general utility function to execute a function to process an image
+///
+/// does repetitive things such as resolving, opening, encoding and sending the image.
 pub async fn do_command<F>(
     ctx: &Context,
     message: &Message,

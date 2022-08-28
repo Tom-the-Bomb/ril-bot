@@ -1,6 +1,11 @@
+//! contains various frequently used small, general helper functions
+
 use reqwest::{Client, IntoUrl};
 use super::error::Error;
 
+
+/// a helper function to fetch the bytes of a provided url
+/// does not implement checks such as for content type or length, as we will assume it is done beforehand
 pub async fn url_to_bytes<T: IntoUrl>(client: Option<&Client>, url: T) -> Result<Vec<u8>, Error> {
     let result = if let Some(client) = client {
         client.get(url)

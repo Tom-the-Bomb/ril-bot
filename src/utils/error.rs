@@ -1,8 +1,15 @@
+//! contains the `Error` enum used by all the self-defined functions in this module
+//! such as the utility functions etc.
+
 use std::fmt;
 use serenity::prelude::SerenityError;
 use serenity::framework::standard::CommandError;
 
-/// An error enum representing all the error types raised when resolving an image in [`ImageResolver`]
+/// An error enum representing all the error types raised when resolving an image in [`ImageResolver`],
+/// used by all the self-defined functions in this module such as the utility functions etc.
+///
+/// Implements `From<E>` for all the errors from other libraries propogated
+/// and `Into<CommandError>` for easy error handling within the bot commands.
 #[derive(Debug)]
 pub enum Error {
     /// Returned when the provided image exceeds the maxiumum size
