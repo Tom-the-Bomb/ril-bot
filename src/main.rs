@@ -52,6 +52,7 @@ impl TypeMapKey for ClientData {
     type Value = reqwest::Client;
 }
 
+/// an "after" callback hook on commands to handle `Err` CommandResults and send the error message
 #[hook]
 async fn error_handler(ctx: &Context, message: &Message, _cmd_name: &str, result: CommandResult) {
     if let Err(err) = result {
@@ -59,6 +60,15 @@ async fn error_handler(ctx: &Context, message: &Message, _cmd_name: &str, result
             .await
             .ok();
     }
+}
+
+/// a callback for when the user is still on cooldown when invoking a command
+#[hook]
+async fn delay_action(ctx: &Context, message: &Message) {
+    println!("AMOBGUS");
+    message.reply(ctx, format!("⏲️ You are still on cooldown!"))
+        .await
+        .ok();
 }
 
 #[tokio::main]
@@ -74,9 +84,10 @@ async fn main() {
         .help(&HELP_COMMAND)
         .bucket("imaging",
             |bucket|
-                bucket.limit(1)
-                    .time_span(5)
+                bucket.delay(5)
                     .limit_for(LimitedFor::User)
+                    .await_ratelimits(5)
+                    .delay_action(delay_action)
         )
         .await;
 
