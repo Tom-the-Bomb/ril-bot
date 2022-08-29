@@ -13,6 +13,7 @@ use serenity::{
         HelpOptions,
         help_commands,
         macros::{hook, help, command, group},
+        buckets::LimitedFor,
         StandardFramework,
         CommandGroup,
         CommandResult,
@@ -70,7 +71,14 @@ async fn main() {
         )
         .after(error_handler)
         .group(&IMAGING_GROUP)
-        .help(&HELP_COMMAND);
+        .help(&HELP_COMMAND)
+        .bucket("imaging",
+            |bucket|
+                bucket.limit(1)
+                    .time_span(5)
+                    .limit_for(LimitedFor::User)
+        )
+        .await;
 
     let token = env::var("TOKEN")
         .unwrap();
@@ -119,6 +127,7 @@ async fn help_command(
 
 
 #[command]
+#[bucket = "imaging"]
 async fn invert(ctx: &Context, message: &Message, args: Args) -> CommandResult {
     do_command(ctx, message, args, invert_func).await?;
 
