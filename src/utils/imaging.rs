@@ -33,6 +33,7 @@ where
         |msg| {
             msg.content(content)
                 .reference_message(message)
+                .allowed_mentions(|am| am.empty_parse())
                 .add_file(
                     AttachmentType::Bytes {
                         data: output.into(),

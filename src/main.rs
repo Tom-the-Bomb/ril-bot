@@ -65,7 +65,6 @@ async fn error_handler(ctx: &Context, message: &Message, _cmd_name: &str, result
 /// a callback for when the user is still on cooldown when invoking a command
 #[hook]
 async fn delay_action(ctx: &Context, message: &Message) {
-    println!("AMOBGUS");
     message.reply(ctx, format!("⏲️ You are still on cooldown!"))
         .await
         .ok();
