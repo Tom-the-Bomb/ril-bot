@@ -2,8 +2,13 @@
 //! such as the utility functions etc.
 
 use std::fmt;
-use serenity::prelude::SerenityError;
-use serenity::framework::standard::CommandError;
+use serenity::{
+    prelude::SerenityError,
+    framework::standard::CommandError,
+};
+
+use super::helpers::humanize_bytes;
+
 
 /// An error enum representing all the error types raised when resolving an image in [`ImageResolver`],
 /// used by all the self-defined functions in this module such as the utility functions etc.
@@ -33,7 +38,10 @@ impl fmt::Display for Error {
         f.write_str(
             match self {
                 Self::ImageTooLarge(size, max_size) =>
-                    format!("Provided Image has a size of `{}` which exceeds the limit of `{}`", size, max_size),
+                    format!("Provided Image has a size of `{}` which exceeds the limit of `{}`",
+                        humanize_bytes(*size),
+                        humanize_bytes(*max_size),
+                    ),
                 Self::EmojiParseError(argument) =>
                     format!("An emoji could not be parsed from the provided argument: `{}`", argument),
                 Self::FetchUrlError =>

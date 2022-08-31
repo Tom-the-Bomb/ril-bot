@@ -25,3 +25,17 @@ pub async fn url_to_bytes<T: IntoUrl>(client: Option<&Client>, url: T) -> Result
         Err(Error::FetchUrlError)
     }
 }
+
+pub fn humanize_bytes(mut size: u64) -> String {
+    let units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+
+    for unit in units {
+        if size < 1024 {
+            return format!("{} {}", size, unit);
+        }
+
+        size /= 1024;
+    }
+
+    "NaN".to_string()
+}

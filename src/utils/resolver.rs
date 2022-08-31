@@ -207,8 +207,7 @@ impl ImageResolver {
     #[must_use]
     fn user_avatar_url(user: &User) -> String {
         let is_gif = user.avatar.as_ref()
-            .map(|av| av.starts_with("a_"))
-            .unwrap_or(false);
+            .map_or(false, |av| av.starts_with("a_"));
 
         user.face()
             .replace(".webp", if is_gif { ".gif" } else { ".png" })
@@ -356,10 +355,16 @@ impl ImageResolver {
             }
         }
 
-        let fallback = url_to_bytes(
-            client,
-            Self::user_avatar_url(&message.author),
-        )
+        let avatar = if let Some(guild) = message.guild_id {
+            Self::member_avatar_url(
+                &guild.member(ctx, message.author.id)
+                    .await?
+            )
+        } else {
+            Self::user_avatar_url(&message.author)
+        };
+
+        let fallback = url_to_bytes(client, avatar)
             .await?;
 
         Ok(fallback)
