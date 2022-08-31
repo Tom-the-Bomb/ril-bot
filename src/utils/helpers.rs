@@ -26,15 +26,16 @@ pub async fn url_to_bytes<T: IntoUrl>(client: Option<&Client>, url: T) -> Result
     }
 }
 
-pub fn humanize_bytes(mut size: u64) -> String {
+pub fn humanize_bytes(size: u64) -> String {
+    let mut size = size as f32;
     let units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 
     for unit in units {
-        if size < 1024 {
-            return format!("{} {}", size, unit);
+        if size < 1024.0 {
+            return format!("{:.2} {}", size, unit);
         }
 
-        size /= 1024;
+        size /= 1024.0;
     }
 
     "NaN".to_string()
