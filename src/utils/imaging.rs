@@ -1,18 +1,23 @@
 //! Contains general utility functions for image processing
 
+use std::{
+    vec::IntoIter,
+    iter::{Zip, Cycle},
+    time::Instant,
+    borrow::Cow
+};
+
 use serenity::{
-    Result,
     prelude::*,
     framework::standard::{Args, CommandResult},
     model::prelude::{Message, AttachmentType},
 };
 
 use ril::prelude::*;
-
-use std::{time::Instant, borrow::Cow};
 use super::{Error, ImageResolver};
 
 pub type Frames<'a> = DynamicFrameIterator<Rgba, &'a [u8]>;
+
 
 /// a helper function to send the output image to the discord channel,
 /// used by [`do_command`]
@@ -22,7 +27,7 @@ pub async fn send_output<'a, T>(
     output: T,
     elapsed: u128,
     is_gif: bool,
-) -> Result<()>
+) -> serenity::Result<()>
 where
     T: Into<Cow<'a, [u8]>>
 {
@@ -67,7 +72,9 @@ where
         move || -> ril::Result<(Vec<u8>, bool)> {
             let image = ImageSequence::<Rgba>::from_bytes_inferred(&resolved[..])?;
 
-            let sequence = function(image)?;
+            let sequence = function(image)?
+                .looped_infinitely();
+
             let is_gif = sequence.len() > 1;
             let format =
                 if is_gif {
@@ -90,4 +97,15 @@ where
         .await?;
 
     Ok(())
+}
+
+pub fn process_gif<I>(frames: Frames, iterable: I)
+    -> ril::Result<Zip<Cycle<IntoIter<Frame<Rgba>>>, I>>
+where
+    I: Iterator<Item = i32>
+{
+    Ok(frames.into_sequence()?
+        .into_iter()
+        .cycle()
+        .zip(iterable))
 }
