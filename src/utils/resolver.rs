@@ -19,7 +19,7 @@ use serenity::{
     },
 };
 
-use regex::Regex;
+use regex::{Regex, RegexBuilder};
 use crate::ClientData;
 use super::{
     Error,
@@ -28,9 +28,27 @@ use super::{
 
 
 lazy_static::lazy_static! {
+    /// regex for removing whitespace in a string
     static ref WS_REGEX: Regex = Regex::new(r"\s+").unwrap();
+    /// regex that matches a discord emoji
     static ref EMOJI_REGEX: Regex = Regex::new(r"^<(a?):([a-zA-Z0-9_]{1,32}):([0-9]{15,20})>$").unwrap();
+    /// regex that matches a discord snowflake (id)
     static ref ID_REGEX: Regex = Regex::new(r"^([0-9]{15,20})$").unwrap();
+    /// regex that matches a tenor page url
+    static ref TENOR_PAGE_REGEX: Regex = RegexBuilder::new(r"^https?://(www\.)?tenor\.com/view/\S+/?$")
+        .case_insensitive(true)
+        .build()
+        .unwrap();
+    /// regex that matches a tenor asset url
+    static ref TENOR_ASSET_URL: Regex = RegexBuilder::new(r"https?://(www\.)?c\.tenor\.com/\S+/\S+\.gif/?")
+        .case_insensitive(true)
+        .build()
+        .unwrap();
+    /// regex that matches an imgur page url
+    static ref IMGUR_PAGE_REGEX: Regex = RegexBuilder::new(r"^https?://(www\.)?imgur.com/(\S+)/?$")
+        .case_insensitive(true)
+        .build()
+        .unwrap();
 }
 
 /// the default max size for resolved images: 16 MB
@@ -104,6 +122,22 @@ impl ImageResolver {
                 } else {
                     Ok(bytes.to_vec())
                 }
+            } else if TENOR_PAGE_REGEX.is_match(arg) {
+                let asset = TENOR_ASSET_URL.find(&*response.text().await?)
+                    .map(|mat| mat.as_str().to_string())
+                    .ok_or(Error::InvalidContentType)?;
+
+                url_to_bytes(client, asset)
+                    .await
+            } else if let Some(captures) =
+                IMGUR_PAGE_REGEX.captures(&*response.text().await?)
+            {
+                let imgur_id = captures.get(2)
+                    .ok_or(Error::InvalidContentType)?
+                    .as_str();
+
+                url_to_bytes(client, format!("https://i.imgur.com/{}.gif", imgur_id))
+                    .await
             } else {
                 Err(Error::InvalidContentType)
             }
