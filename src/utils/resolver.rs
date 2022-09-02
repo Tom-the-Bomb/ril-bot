@@ -130,7 +130,7 @@ impl ImageResolver {
                 url_to_bytes(client, asset)
                     .await
             } else if let Some(captures) =
-                IMGUR_PAGE_REGEX.captures(&*response.text().await?)
+                IMGUR_PAGE_REGEX.captures(arg)
             {
                 let imgur_id = captures.get(2)
                     .ok_or(Error::InvalidContentType)?
