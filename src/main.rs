@@ -22,6 +22,8 @@ use serenity::{
 };
 
 use std::collections::HashSet;
+
+#[allow(clippy::wildcard_imports)]
 use crate::utils::{
     functions::*,
     imaging::do_command,
@@ -68,7 +70,7 @@ async fn error_handler(ctx: &Context, message: &Message, _cmd_name: &str, result
 /// a callback for when the user is still on cooldown when invoking a command
 #[hook]
 async fn delay_action(ctx: &Context, message: &Message) {
-    message.reply(ctx, format!("⏲️ You are still on cooldown!"))
+    message.reply(ctx, "⏲️ You are still on cooldown!")
         .await
         .ok();
 }
@@ -142,7 +144,7 @@ async fn help_command(
 #[command]
 #[bucket = "imaging"]
 async fn invert(ctx: &Context, message: &Message, args: Args) -> CommandResult {
-    do_command(ctx, message, args, invert_func).await?;
+    do_command(ctx, message, args, invert_func, (Some(500), None)).await?;
 
     Ok(())
 }
@@ -150,7 +152,7 @@ async fn invert(ctx: &Context, message: &Message, args: Args) -> CommandResult {
 #[command]
 #[bucket = "imaging"]
 async fn huerotate(ctx: &Context, message: &Message, args: Args) -> CommandResult {
-    do_command(ctx, message, args, huerotate_func).await?;
+    do_command(ctx, message, args, huerotate_func, (Some(500), None)).await?;
 
     Ok(())
 }

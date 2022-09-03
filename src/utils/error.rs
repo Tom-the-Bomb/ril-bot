@@ -16,6 +16,7 @@ use super::helpers::humanize_bytes;
 /// Implements `From<E>` for all the errors from other libraries propogated
 /// and `Into<CommandError>` for easy error handling within the bot commands.
 #[derive(Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum Error {
     /// Returned when the provided image exceeds the maxiumum size
     ImageTooLarge(u64, u64),
@@ -45,7 +46,7 @@ impl fmt::Display for Error {
                 Self::EmojiParseError(argument) =>
                     format!("An emoji could not be parsed from the provided argument: `{}`", argument),
                 Self::FetchUrlError =>
-                    format!("Something went wrong during the HTTP request to the provided URL"),
+                    String::from("Something went wrong during the HTTP request to the provided URL"),
                 Self::InvalidContentType =>
                     String::from("Only content types of `image/*` are supported"),
                 Self::RequestError(err) =>

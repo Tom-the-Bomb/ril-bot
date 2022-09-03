@@ -14,9 +14,13 @@ use serenity::{
 };
 
 use ril::prelude::*;
-use super::{Error, ImageResolver};
+use super::{
+    Error,
+    ImageResolver,
+    functions::contain_size,
+};
 
-pub type Frames<'a> = DynamicFrameIterator<Rgba, &'a [u8]>;
+pub type Frames = ImageSequence<Rgba>;
 
 
 /// a helper function to send the output image to the discord channel,
@@ -59,9 +63,10 @@ pub async fn do_command<F>(
     message: &Message,
     mut args: Args,
     function: F,
+    max_size: (Option<u32>, Option<u32>),
 ) -> CommandResult
 where
-    F: Fn(Frames) -> ril::Result<ImageSequence<Rgba>> + Send + Sync + 'static,
+    F: Fn(Frames) -> ril::Result<Frames> + Send + Sync + 'static,
 {
     let resolved = ImageResolver::new()
         .resolve(ctx, message, &mut args)
@@ -70,7 +75,11 @@ where
     let instant = Instant::now();
     let (result, is_gif) = tokio::task::spawn_blocking(
         move || -> ril::Result<(Vec<u8>, bool)> {
-            let image = ImageSequence::<Rgba>::from_bytes_inferred(&resolved[..])?;
+            let mut image = ImageSequence::<Rgba>::from_bytes_inferred(&resolved[..])?
+                .into_sequence()?;
+
+            let (width, height) = max_size;
+            image = contain_size(image, width, height)?;
 
             let sequence = function(image)?
                 .looped_infinitely();
@@ -90,22 +99,26 @@ where
         }
     )
     .await?
-    .map_err(|e| Error::from(e))?;
+    .map_err(Error::from)?;
 
-    let elapsed = instant.elapsed().as_millis();
+    let elapsed = instant.elapsed()
+        .as_millis();
+
     send_output(ctx, message, result, elapsed, is_gif)
         .await?;
 
     Ok(())
 }
 
+/// helper function that zips together an iterator that generates a gif
+/// with the original input gif frames to allow for partial gif support on gif functions
 pub fn process_gif<I>(frames: Frames, iterable: I)
-    -> ril::Result<Zip<Cycle<IntoIter<Frame<Rgba>>>, I>>
+    -> Zip<Cycle<IntoIter<Frame<Rgba>>>, I>
 where
     I: Iterator<Item = i32>
 {
-    Ok(frames.into_sequence()?
+    frames
         .into_iter()
         .cycle()
-        .zip(iterable))
+        .zip(iterable)
 }

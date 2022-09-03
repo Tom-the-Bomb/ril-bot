@@ -27,8 +27,9 @@ pub async fn url_to_bytes<T: IntoUrl>(client: Option<&Client>, url: T) -> Result
 }
 
 /// helper function that humanizes an integer representing a number of bytes to a human readable formats with SI units
+#[allow(clippy::cast_precision_loss)]
 pub fn humanize_bytes(size: u64) -> String {
-    let mut size = size as f32;
+    let mut size = size as f64;
     let units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 
     for unit in units {

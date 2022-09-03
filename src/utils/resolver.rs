@@ -1,4 +1,4 @@
-//! module containing the ImageResolver struct
+//! module containing the [`ImageResolver`] struct
 //! used to resolve a source image from command arguments and references
 
 use serenity::{
@@ -77,10 +77,11 @@ impl Default for ImageResolver {
     }
 }
 
+#[allow(clippy::module_name_repetitions)]
 impl ImageResolver {
     /// returns a new instance of [`ImageResolver`] with default max size
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             max_size: DEFAULT_MAX_SIZE,
         }
@@ -123,7 +124,7 @@ impl ImageResolver {
                     Ok(bytes.to_vec())
                 }
             } else if TENOR_PAGE_REGEX.is_match(arg) {
-                let asset = TENOR_ASSET_URL.find(&*response.text().await?)
+                let asset = TENOR_ASSET_URL.find(response.text().await?.as_str())
                     .map(|mat| mat.as_str().to_string())
                     .ok_or(Error::InvalidContentType)?;
 
@@ -160,12 +161,14 @@ impl ImageResolver {
                     let size = bytes.len() as u64;
                     if size < self.max_size {
                         return Ok(Some(bytes));
-                    } else {
-                        return Err(Error::ImageTooLarge(size, self.max_size));
                     }
-                } else {
-                    return Err(Error::ImageTooLarge(file.size, self.max_size));
+                    return Err(
+                        Error::ImageTooLarge(size, self.max_size)
+                    );
                 }
+                return Err(
+                    Error::ImageTooLarge(file.size, self.max_size)
+                );
             }
         }
 
@@ -271,7 +274,8 @@ impl ImageResolver {
         let fmt = if animated { "gif" } else { "png" };
         let url = format!("https://cdn.discordapp.com/emojis/{id}.{fmt}");
 
-        Ok(url_to_bytes(client, url).await?)
+        url_to_bytes(client, url)
+            .await
     }
 
     /// run's conversions on the argument and referenced message's content
@@ -284,25 +288,25 @@ impl ImageResolver {
         arg: &str,
     ) -> Result<Option<Vec<u8>>, Error> {
         Ok(if let Ok(out) =
-            Member::convert(ctx, guild, channel, &*arg)
+            Member::convert(ctx, guild, channel, arg)
             .await
         {
             Some(url_to_bytes(client, Self::member_avatar_url(&out))
                 .await?)
         } else if let Ok(out) =
-            User::convert(ctx, guild, channel, &*arg)
+            User::convert(ctx, guild, channel, arg)
             .await
         {
             Some(url_to_bytes(client, Self::user_avatar_url(&out))
                 .await?)
         } else if let Ok(out) =
-            Emoji::convert(ctx, guild, channel, &*arg)
+            Emoji::convert(ctx, guild, channel, arg)
             .await
         {
             Some(url_to_bytes(client, out.url())
                 .await?)
         } else if let Ok(out) =
-            Self::convert_emoji(client, &*arg)
+            Self::convert_emoji(client, arg)
             .await
         {
             Some(out)
@@ -343,7 +347,7 @@ impl ImageResolver {
                     ctx,
                     message.guild_id,
                     Some(message.channel_id),
-                    &*arg,
+                    arg.as_str(),
                 )
                 .await
                 .transpose()
@@ -367,7 +371,7 @@ impl ImageResolver {
                 return Ok(bytes);
             }
 
-            if referenced.content.len() > 0 {
+            if !referenced.content.is_empty() {
                 let content = WS_REGEX
                     .split(referenced.content.as_str())
                     .next();
