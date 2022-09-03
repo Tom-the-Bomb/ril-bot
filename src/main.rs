@@ -144,15 +144,13 @@ async fn help_command(
 #[command]
 #[bucket = "imaging"]
 async fn invert(ctx: &Context, message: &Message, args: Args) -> CommandResult {
-    do_command(ctx, message, args, invert_func, (Some(500), None)).await?;
-
-    Ok(())
+    do_command(ctx, message, args, invert_func, (Some(500), None))
+        .await
 }
 
 #[command]
 #[bucket = "imaging"]
 async fn huerotate(ctx: &Context, message: &Message, args: Args) -> CommandResult {
-    do_command(ctx, message, args, huerotate_func, (Some(500), None)).await?;
-
-    Ok(())
+    do_command(ctx, message, args, huerotate_func, (Some(500), None))
+        .await
 }
