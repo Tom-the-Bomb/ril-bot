@@ -30,7 +30,7 @@ pub const DEFAULT_MAX_FRAMES: usize = 200;
 
 
 /// a helper function to send the output image to the discord channel,
-/// used by [`ImageResolver::run`]
+/// used by [`ImageExecutor::run`]
 pub async fn send_output<'a, T>(
     ctx: &Context,
     message: &Message,
