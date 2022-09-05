@@ -20,11 +20,17 @@ use super::{
     functions::contain_size,
 };
 
+/// TypeAlias for an imagesequence the bot decodes into and passes around
 pub type Frames = ImageSequence<Rgba>;
+
+/// constant representing the default max dimensions for an input image
+pub const DEFAULT_MAX_DIM: u32 = 500;
+/// constant representing the default max frame count for an input image
+pub const DEFAULT_MAX_FRAMES: usize = 200;
 
 
 /// a helper function to send the output image to the discord channel,
-/// used by [`do_command`]
+/// used by [`ImageResolver::run`]
 pub async fn send_output<'a, T>(
     ctx: &Context,
     message: &Message,
@@ -55,59 +61,142 @@ where
     Ok(())
 }
 
-/// a general utility function to execute a function to process an image
+/// a general struct to execute a function to process an image
+/// and hold configuration information for the execution
 ///
 /// does repetitive things such as resolving, opening, encoding and sending the image.
-pub async fn do_command<F>(
-    ctx: &Context,
-    message: &Message,
-    mut args: Args,
-    function: F,
-    max_size: (Option<u32>, Option<u32>),
-) -> CommandResult
+#[derive(Clone)]
+pub struct ImageExecutor<'a, F>
 where
     F: Fn(Frames) -> ril::Result<Frames> + Send + Sync + 'static,
 {
-    let resolved = ImageResolver::new()
-        .resolve(ctx, message, &mut args)
-        .await?;
+    /// the current command context
+    ctx: &'a Context,
+    /// the invokation message of the command
+    message: &'a Message,
+    /// the arguments passed into the command invokation
+    args: Args,
+    /// the image function to execute
+    function: Option<F>,
+    /// the maximum width allowed for an image
+    max_width: Option<u32>,
+    /// the maximum height allowed for an image
+    max_height: Option<u32>,
+    /// the maximum number of frames allowed for an image
+    max_frames: Option<usize>,
+}
 
-    let instant = Instant::now();
-    let (result, is_gif) = tokio::task::spawn_blocking(
-        move || -> ril::Result<(Vec<u8>, bool)> {
-            let mut image = ImageSequence::<Rgba>::from_bytes_inferred(&resolved[..])?
-                .into_sequence()?;
-
-            let (width, height) = max_size;
-            image = contain_size(image, width, height)?;
-
-            let sequence = function(image)?
-                .looped_infinitely();
-
-            let is_gif = sequence.len() > 1;
-            let format =
-                if is_gif {
-                    ImageFormat::Gif
-                } else {
-                    ImageFormat::Png
-                };
-
-            let mut bytes: Vec<u8> = Vec::new();
-            sequence.encode(format, &mut bytes)?;
-
-            Ok((bytes, is_gif))
+impl<'a, F> ImageExecutor<'a, F>
+where
+    F: Fn(Frames) -> ril::Result<Frames> + Send + Sync + 'static,
+{
+    /// creates a new instance of the ImageExecutor with the basic, required information passed
+    #[must_use]
+    pub const fn new(ctx: &'a Context, message: &'a Message, args: Args) -> Self {
+        Self {
+            ctx, message, args,
+            function: None,
+            max_width: None,
+            max_height: Some(DEFAULT_MAX_DIM),
+            max_frames: Some(DEFAULT_MAX_FRAMES),
         }
-    )
-    .await?
-    .map_err(Error::from)?;
+    }
 
-    let elapsed = instant.elapsed()
-        .as_millis();
+    /// a builder method to set the image function to execute, must be called
+    #[must_use]
+    pub fn function(mut self, function: F) -> Self {
+        self.function = Some(function);
+        self
+    }
 
-    send_output(ctx, message, result, elapsed, is_gif)
-        .await?;
+    /// a builder method to set [`self.max_width`]
+    #[must_use]
+    #[allow(dead_code)]
+    pub const fn max_width(mut self, max_width: u32) -> Self {
+        self.max_width = Some(max_width);
+        self
+    }
 
-    Ok(())
+    /// a builder method to set [`self.max_height`]
+    #[must_use]
+    #[allow(dead_code)]
+    pub const fn max_height(mut self, max_height: u32) -> Self {
+        self.max_height = Some(max_height);
+        self
+    }
+
+    /// a builder method to set [`self.max_frames`]
+    #[must_use]
+    #[allow(dead_code)]
+    pub const fn max_frames(mut self, max_frames: usize) -> Self {
+        self.max_frames = Some(max_frames);
+        self
+    }
+
+    /// the primary method to call, this basically uses all of the passed information
+    /// and proceeds to execute the provided function, with all the wrapping tasks also done here
+    pub async fn run(mut self) -> CommandResult {
+        let resolved = ImageResolver::new()
+            .resolve(
+                self.ctx,
+                self.message,
+                &mut self.args,
+            )
+            .await?;
+
+        let instant = Instant::now();
+        let (result, is_gif) = tokio::task::spawn_blocking(
+            move || -> Result<(Vec<u8>, bool), Error> {
+                let mut image = ImageSequence::<Rgba>::from_bytes_inferred(&resolved[..])?
+                    .into_sequence()?;
+
+                let max_frames = self.max_frames
+                    .unwrap_or(DEFAULT_MAX_FRAMES);
+
+                if image.len() > max_frames {
+                    return Err(Error::TooManyFrames(image.len(), max_frames))
+                }
+
+                image = contain_size(
+                    image,
+                    self.max_width,
+                    self.max_height,
+                )?;
+
+                let sequence = self.function
+                    .expect("No function was specified or passed, have you called the builder method `function(f)`?")
+                    (image)?
+                    .looped_infinitely();
+
+                let is_gif = sequence.len() > 1;
+                let format =
+                    if is_gif {
+                        ImageFormat::Gif
+                    } else {
+                        ImageFormat::Png
+                    };
+
+                let mut bytes: Vec<u8> = Vec::new();
+                sequence.encode(format, &mut bytes)?;
+
+                Ok((bytes, is_gif))
+            }
+        )
+        .await?
+        .map_err(Error::from)?;
+
+        let elapsed = instant.elapsed()
+            .as_millis();
+
+        send_output(
+            self.ctx,
+            self.message,
+            result, elapsed, is_gif,
+        )
+            .await?;
+
+        Ok(())
+    }
 }
 
 /// helper function that zips together an iterator that generates a gif

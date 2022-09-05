@@ -26,7 +26,7 @@ use std::collections::HashSet;
 #[allow(clippy::wildcard_imports)]
 use crate::utils::{
     functions::*,
-    imaging::do_command,
+    imaging::ImageExecutor,
 };
 
 mod utils;
@@ -144,13 +144,17 @@ async fn help_command(
 #[command]
 #[bucket = "imaging"]
 async fn invert(ctx: &Context, message: &Message, args: Args) -> CommandResult {
-    do_command(ctx, message, args, invert_func, (Some(500), None))
+    ImageExecutor::new(ctx, message, args)
+        .function(invert_func)
+        .run()
         .await
 }
 
 #[command]
 #[bucket = "imaging"]
 async fn huerotate(ctx: &Context, message: &Message, args: Args) -> CommandResult {
-    do_command(ctx, message, args, huerotate_func, (Some(500), None))
+    ImageExecutor::new(ctx, message, args)
+        .function(huerotate_func)
+        .run()
         .await
 }

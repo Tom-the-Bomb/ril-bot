@@ -18,26 +18,52 @@ use super::helpers::humanize_bytes;
 #[derive(Debug)]
 #[allow(clippy::enum_variant_names)]
 pub enum Error {
-    /// Returned when the provided image exceeds the maxiumum size
-    ImageTooLarge(u64, u64),
+    /// Returned when the provided image's frame count exceeds the maximum allowed frame count
+    TooManyFrames(
+        /// provided frame count
+        usize,
+        /// maximum allowed frame count
+        usize,
+    ),
+    /// Returned when the provided image size exceeds the maxiumum allowed size
+    ImageTooLarge(
+        /// provided image size
+        u64,
+        /// maximum allowed image size
+        u64,
+    ),
     /// Returned in [`super::resolver::ImageResolver::convert_emoji`] when an emoji could not be parsed from the argument
-    EmojiParseError(String),
+    EmojiParseError(
+        /// provided argument that we failed to parse into an emoji
+        String,
+    ),
     /// Returned when the image URL is invalid or returned a non-ok status code
     FetchUrlError,
     /// Returned when the content-type of the provided source is not of `image/*`
     InvalidContentType,
     /// Propogated from [`reqwest::Error`]
-    RequestError(reqwest::Error),
+    RequestError(
+        /// Error propogated from
+        reqwest::Error,
+    ),
     /// Propogated from [`SerenityError`]
-    SerenityError(SerenityError),
+    SerenityError(
+        /// Error propogated from
+        SerenityError,
+    ),
     /// Propogated from [`ril::Error`]
-    RilError(ril::Error)
+    RilError(
+        /// Error propogated from
+        ril::Error,
+    ),
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(
             match self {
+                Self::TooManyFrames(count, max_frames) =>
+                    format!("The provided image has a frame count of `{}` which exceeds the limit of `{}`", count, max_frames),
                 Self::ImageTooLarge(size, max_size) =>
                     format!("Provided Image has a size of `{}` which exceeds the limit of `{}`",
                         humanize_bytes(*size),
