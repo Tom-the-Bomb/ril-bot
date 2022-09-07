@@ -1,8 +1,15 @@
 //! contains various frequently used small, general helper functions
 
+use serenity::framework::standard::Args;
 use reqwest::{Client, IntoUrl};
 use super::error::Error;
 
+
+/// simple helper function to resolve the first argument in a command
+pub fn resolve_arg(args: &mut Args) -> Option<String> {
+    args.single_quoted::<String>().ok()
+        .map(|s| s.trim().to_string())
+}
 
 /// a helper function to fetch the bytes of a provided url
 /// does not implement checks such as for content type or length, as we will assume it is done beforehand

@@ -4,7 +4,6 @@
 use serenity::{
     prelude::*,
     utils::ArgumentConvert,
-    framework::standard::Args,
     model::{
         user::User,
         channel::Message,
@@ -330,10 +329,7 @@ impl ImageResolver {
     }
 
     /// the primary method to call to resolve an image from the provided `context`, `message` and `args`
-    pub async fn resolve(&self, ctx: &Context, message: &Message, args: &mut Args) -> Result<Vec<u8>, Error> {
-        let arg = args.single_quoted::<String>().ok()
-            .map(|s| s.trim().to_string());
-
+    pub async fn resolve(&self, ctx: &Context, message: &Message, arg: Option<String>) -> Result<Vec<u8>, Error> {
         let client_data = ctx.data.read()
             .await;
 

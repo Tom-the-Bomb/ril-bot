@@ -4,12 +4,12 @@ use std::{
     vec::IntoIter,
     iter::{Zip, Cycle},
     time::Instant,
-    borrow::Cow
+    borrow::Cow,
 };
 
 use serenity::{
     prelude::*,
-    framework::standard::{Args, CommandResult},
+    framework::standard::CommandResult,
     model::prelude::{Message, AttachmentType},
 };
 
@@ -61,21 +61,31 @@ where
     Ok(())
 }
 
+/// a wrapper struct to allow for a dynamic amount of arguments
+/// passed to the image function being executed
+#[derive(Clone)]
+pub struct ImageArguments<A = ()> {
+    /// the input image
+    pub frames: Frames,
+    /// a vector of arguments
+    pub arguments: Vec<A>,
+}
+
 /// a general struct to execute a function to process an image
 /// and hold configuration information for the execution
 ///
 /// does repetitive things such as resolving, opening, encoding and sending the image.
 #[derive(Clone)]
-pub struct ImageExecutor<'a, F>
+pub struct ImageExecutor<'a, F, A>
 where
-    F: Fn(Frames) -> ril::Result<Frames> + Send + Sync + 'static,
+    F: Fn(ImageArguments<A>) -> ril::Result<Frames> + Send + Sync + 'static,
 {
     /// the current command context
     ctx: &'a Context,
     /// the invokation message of the command
     message: &'a Message,
     /// the arguments passed into the command invokation
-    args: Args,
+    cmd_arg: Option<String>,
     /// the image function to execute
     function: Option<F>,
     /// the maximum width allowed for an image
@@ -84,21 +94,25 @@ where
     max_height: Option<u32>,
     /// the maximum number of frames allowed for an image
     max_frames: Option<usize>,
+    /// any extra arguments passed to the function
+    arguments: Vec<A>,
 }
 
-impl<'a, F> ImageExecutor<'a, F>
+impl<'a, F, A> ImageExecutor<'a, F, A>
 where
-    F: Fn(Frames) -> ril::Result<Frames> + Send + Sync + 'static,
+    A: Send + Sync + 'static,
+    F: Fn(ImageArguments<A>) -> ril::Result<Frames> + Send + Sync + 'static,
 {
     /// creates a new instance of the ImageExecutor with the basic, required information passed
     #[must_use]
-    pub const fn new(ctx: &'a Context, message: &'a Message, args: Args) -> Self {
+    pub const fn new(ctx: &'a Context, message: &'a Message, cmd_arg: Option<String>) -> Self {
         Self {
-            ctx, message, args,
+            ctx, message, cmd_arg,
             function: None,
             max_width: None,
             max_height: Some(DEFAULT_MAX_DIM),
             max_frames: Some(DEFAULT_MAX_FRAMES),
+            arguments: Vec::new(),
         }
     }
 
@@ -133,14 +147,22 @@ where
         self
     }
 
+    /// a builder method to pass in arguments to the image function
+    #[must_use]
+    #[allow(dead_code)]
+    pub fn arguments(mut self, arguments: Vec<A>) -> Self {
+        self.arguments = arguments;
+        self
+    }
+
     /// the primary method to call, this basically uses all of the passed information
     /// and proceeds to execute the provided function, with all the wrapping tasks also done here
-    pub async fn run(mut self) -> CommandResult {
+    pub async fn run(self) -> CommandResult {
         let resolved = ImageResolver::new()
             .resolve(
                 self.ctx,
                 self.message,
-                &mut self.args,
+                self.cmd_arg,
             )
             .await?;
 
@@ -158,14 +180,14 @@ where
                 }
 
                 image = contain_size(
-                    image,
+                    ImageArguments { frames: image, arguments: Vec::new() },
                     self.max_width,
                     self.max_height,
                 )?;
 
                 let sequence = self.function
                     .expect("No function was specified or passed, have you called the builder method `function(f)`?")
-                    (image)?
+                    (ImageArguments::<A> { frames: image, arguments: self.arguments })?
                     .looped_infinitely();
 
                 let is_gif = sequence.len() > 1;

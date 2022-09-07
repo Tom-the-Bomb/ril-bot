@@ -27,6 +27,7 @@ use std::collections::HashSet;
 use crate::utils::{
     functions::*,
     imaging::ImageExecutor,
+    helpers::resolve_arg,
 };
 
 mod utils;
@@ -36,6 +37,7 @@ mod utils;
 #[commands(
     invert,
     huerotate,
+    caption,
 )]
 struct Imaging;
 
@@ -143,8 +145,8 @@ async fn help_command(
 
 #[command]
 #[bucket = "imaging"]
-async fn invert(ctx: &Context, message: &Message, args: Args) -> CommandResult {
-    ImageExecutor::new(ctx, message, args)
+async fn invert(ctx: &Context, message: &Message, mut args: Args) -> CommandResult {
+    ImageExecutor::new(ctx, message, resolve_arg(&mut args))
         .function(invert_func)
         .run()
         .await
@@ -152,9 +154,19 @@ async fn invert(ctx: &Context, message: &Message, args: Args) -> CommandResult {
 
 #[command]
 #[bucket = "imaging"]
-async fn huerotate(ctx: &Context, message: &Message, args: Args) -> CommandResult {
-    ImageExecutor::new(ctx, message, args)
+async fn huerotate(ctx: &Context, message: &Message, mut args: Args) -> CommandResult {
+    ImageExecutor::new(ctx, message, resolve_arg(&mut args))
         .function(huerotate_func)
+        .run()
+        .await
+}
+
+#[command]
+#[bucket = "imaging"]
+async fn caption(ctx: &Context, message: &Message, mut args: Args) -> CommandResult {
+    ImageExecutor::new(ctx, message, resolve_arg(&mut args))
+        .function(caption_func)
+        .arguments(vec!["TESTSTASDASDAS".to_string()])
         .run()
         .await
 }

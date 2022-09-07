@@ -3,15 +3,19 @@
 #![allow(clippy::unnecessary_wraps)]
 
 use ril::{prelude::*, Result};
-use super::imaging::{process_gif, Frames};
+use super::imaging::{process_gif, Frames, ImageArguments};
+
+lazy_static::lazy_static! {
+    static ref IMPACT_FONT: Font = Font::open("./assets/impact.ttf", 30.0).unwrap();
+}
 
 
 /// negates the provided image
-pub fn invert_func(frames: Frames) -> Result<Frames> {
+pub fn invert_func(data: ImageArguments) -> Result<Frames> {
     let mut sequence =
         ImageSequence::<Rgba>::new();
 
-    for mut frame in frames {
+    for mut frame in data.frames {
         frame.invert();
         sequence.push_frame(frame);
     }
@@ -20,14 +24,14 @@ pub fn invert_func(frames: Frames) -> Result<Frames> {
 }
 
 /// rotates the hue value of the provided image by 360 degrees
-pub fn huerotate_func(frames: Frames) -> Result<Frames> {
+pub fn huerotate_func(data: ImageArguments) -> Result<Frames> {
     let mut sequence =
         ImageSequence::<Rgba>::new();
 
     let range = (0..360)
         .step_by(10);
 
-    for (mut frame, deg) in process_gif(frames, range) {
+    for (mut frame, deg) in process_gif(data.frames, range) {
         frame.hue_rotate(deg);
         sequence.push_frame(frame);
     }
@@ -35,12 +39,48 @@ pub fn huerotate_func(frames: Frames) -> Result<Frames> {
     Ok(sequence)
 }
 
+
+/// adds a meme caption onto a provided image
+pub fn caption_func(data: ImageArguments<String>) -> Result<Frames> {
+    let mut sequence =
+        ImageSequence::<Rgba>::new();
+
+    for frame in data.frames {
+        let mut layout = TextLayout::new()
+            .with_segment(
+                &TextSegment::new(&IMPACT_FONT, data.arguments[0].as_str(), Rgba::black())
+            )
+            .with_width((frame.width() as f32 * 0.9) as u32)
+            .with_wrap(WrapStyle::Word)
+            .centered();
+
+        let extra_height =
+            (layout.height() as f32 / 9.0 * 10.0) as u32;
+
+        layout = layout
+            .with_position(frame.width() / 2, extra_height / 2);
+
+        let mut image = Image::<Rgba>::new(
+            frame.width(),
+            frame.height() + extra_height,
+            Rgba::white(),
+        );
+        image.draw(&layout);
+        image.paste(0, extra_height, frame.into_image());
+        sequence.push_frame(Frame::from(image));
+    }
+
+    Ok(sequence)
+}
+
 /// resizes an image to a provided size, only if it is larger
 pub fn contain_size(
-    frames: Frames,
+    data: ImageArguments<()>,
     width: Option<u32>,
     height: Option<u32>,
 ) -> Result<Frames> {
+    let frames = data.frames;
+
     if width.is_none() && height.is_none() {
         return Ok(frames);
     }
