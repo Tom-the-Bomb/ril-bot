@@ -288,25 +288,25 @@ impl ImageResolver {
     ) -> Result<Option<Vec<u8>>, Error> {
         Ok(if let Ok(out) =
             Member::convert(ctx, guild, channel, arg)
-            .await
+                .await
         {
             Some(url_to_bytes(client, Self::member_avatar_url(&out))
                 .await?)
         } else if let Ok(out) =
             User::convert(ctx, guild, channel, arg)
-            .await
+                .await
         {
             Some(url_to_bytes(client, Self::user_avatar_url(&out))
                 .await?)
         } else if let Ok(out) =
             Emoji::convert(ctx, guild, channel, arg)
-            .await
+                .await
         {
             Some(url_to_bytes(client, out.url())
                 .await?)
         } else if let Ok(out) =
             Self::convert_emoji(client, arg)
-            .await
+                .await
         {
             Some(out)
         } else if let Ok(out) =

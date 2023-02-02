@@ -44,21 +44,23 @@ pub fn huerotate_func(data: ImageArguments) -> Result<Frames> {
 pub fn caption_func(data: ImageArguments<String>) -> Result<Frames> {
     let mut sequence =
         ImageSequence::<Rgba>::new();
+    let segment = TextSegment::new(
+        &IMPACT_FONT, data.arguments[0].as_str(), Rgba::black()
+    );
 
     for frame in data.frames {
         let mut layout = TextLayout::new()
-            .with_segment(
-                &TextSegment::new(&IMPACT_FONT, data.arguments[0].as_str(), Rgba::black())
-            )
             .with_width((frame.width() as f32 * 0.9) as u32)
             .with_wrap(WrapStyle::Word)
-            .centered();
+            .centered()
+            .with_segment(&segment);
 
         let extra_height =
             (layout.height() as f32 / 9.0 * 10.0) as u32;
 
         layout = layout
-            .with_position(frame.width() / 2, extra_height / 2);
+            .with_position(frame.width() / 2, extra_height / 2)
+            .with_segment(&segment);
 
         let mut image = Image::<Rgba>::new(
             frame.width(),
@@ -66,7 +68,7 @@ pub fn caption_func(data: ImageArguments<String>) -> Result<Frames> {
             Rgba::white(),
         );
         image.draw(&layout);
-        image.paste(0, extra_height, frame.into_image());
+        image.paste(0, extra_height, frame.image());
         sequence.push_frame(Frame::from(image));
     }
 
@@ -85,10 +87,13 @@ pub fn contain_size(
         return Ok(frames);
     }
 
-    let first = frames.first_frame();
-
-    let w = first.width() as f32;
-    let h = first.height() as f32;
+    let (w, h) = if let Some(first) =
+        frames.first_frame()
+    {
+        (first.width() as f32, first.height() as f32)
+    } else {
+        return Ok(frames);
+    };
 
     let resolved_width = width
         .unwrap_or_else(|| {
