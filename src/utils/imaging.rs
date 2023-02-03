@@ -19,7 +19,7 @@ use super::{
     functions::contain_size,
 };
 
-/// TypeAlias for an imagesequence the bot decodes into and passes around
+/// `TypeAlias` for an [`ImageSequence`] the bot decodes into and passes around
 pub type Frames = ImageSequence<Rgba>;
 
 /// constant representing the default max dimensions for an input image
@@ -38,7 +38,7 @@ pub async fn send_output<'a, T>(
     is_gif: bool,
 ) -> serenity::Result<()>
 where
-    T: Into<Cow<'a, [u8]>>
+    T: Into<Cow<'a, [u8]>> + Send
 {
     let content = format!("**Process Time:** `{elapsed} ms`");
     let format = if is_gif { "gif" } else { "png" };
@@ -115,6 +115,7 @@ where
 
     /// a builder method to set the image function to execute, must be called
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn function(mut self, function: F) -> Self {
         self.function = Some(function);
         self

@@ -49,12 +49,14 @@ pub fn caption_func(data: ImageArguments<String>) -> Result<Frames> {
     );
 
     for frame in data.frames {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let mut layout = TextLayout::new()
             .with_width((f64::from(frame.width()) * 0.9) as u32)
             .with_wrap(WrapStyle::Word)
             .centered()
             .with_segment(&segment);
 
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let extra_height =
             (f64::from(layout.height()) / 9.0 * 10.0) as u32;
 
@@ -76,6 +78,7 @@ pub fn caption_func(data: ImageArguments<String>) -> Result<Frames> {
 }
 
 /// resizes an image to a provided size, only if it is larger
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 pub fn contain_size(
     data: ImageArguments<()>,
     width: Option<u32>,
@@ -97,20 +100,22 @@ pub fn contain_size(
 
     let resolved_width = width
         .unwrap_or_else(|| {
-            if let Some(height) = height {
-                ((f64::from(height) / h) * w).ceil() as u32
-            } else {
-                w as u32
-            }
+            height.map_or(
+                w as u32,
+                |height| {
+                    ((f64::from(height) / h) * w).ceil() as u32
+                }
+            )
         });
 
     let resolved_height = height
         .unwrap_or_else(|| {
-            if let Some(width) = width {
-                ((f64::from(width) / w) * h).ceil() as u32
-            } else {
-                h as u32
-            }
+            width.map_or(
+                h as u32,
+                |width| {
+                    ((f64::from(width) / w) * h).ceil() as u32
+                }
+            )
         });
 
     if w as u32 >= resolved_width || h as u32 >= resolved_height {

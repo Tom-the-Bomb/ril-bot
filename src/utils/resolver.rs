@@ -65,6 +65,7 @@ pub const DEFAULT_MAX_SIZE: u64 = 16_000_000;
 ///     - repeats the above for a referenced message if exists.
 ///     - fallbacks to command author
 #[derive(Debug, Clone)]
+#[allow(clippy::module_name_repetitions)]
 pub struct ImageResolver {
     /// indicates the max size in bytes that we will accept for the provided image
     pub max_size: u64,
@@ -90,7 +91,10 @@ impl ImageResolver {
     }
 
     /// a method to resolve a user inputted URL, with many checks
-    pub async fn resolve_url<T: AsRef<str>>(&self, client: Option<&reqwest::Client>, arg: T) -> Result<Vec<u8>, Error> {
+    pub async fn resolve_url<T>(&self, client: Option<&reqwest::Client>, arg: T) -> Result<Vec<u8>, Error>
+    where
+        T: AsRef<str> + Send
+    {
         let arg = arg
             .as_ref()
             .trim_start_matches('<')
@@ -209,6 +213,7 @@ impl ImageResolver {
     }
 
     /// tries to resolve attachments: (files, stickers and embeds)
+    #[allow(clippy::useless_let_if_seq)]
     async fn get_attachments(
         &self,
         client: Option<&reqwest::Client>,
@@ -253,6 +258,7 @@ impl ImageResolver {
     }
 
     /// a method to fetch the emoji image from a `<:name:id>` formatted emoji or simply an `id`
+    #[allow(clippy::option_if_let_else)]
     pub async fn convert_emoji(client: Option<&reqwest::Client>, argument: &str) -> Result<Vec<u8>, Error> {
         let (animated, id) =
             if let Some(captures) = EMOJI_REGEX.captures(argument)

@@ -29,7 +29,10 @@ pub fn resolve_extra_arg(img_resolved: bool, args: &mut Args) -> String {
 
 /// a helper function to fetch the bytes of a provided url
 /// does not implement checks such as for content type or length, as we will assume it is done beforehand
-pub async fn url_to_bytes<T: IntoUrl>(client: Option<&Client>, url: T) -> Result<Vec<u8>, Error> {
+pub async fn url_to_bytes<T>(client: Option<&Client>, url: T) -> Result<Vec<u8>, Error>
+where
+    T: IntoUrl + Send
+{
     let result = if let Some(client) = client {
         client.get(url)
             .send()
