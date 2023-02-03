@@ -16,7 +16,6 @@ use serenity::{
 use ril::prelude::*;
 use super::{
     Error,
-    ImageResolver,
     functions::contain_size,
 };
 
@@ -41,7 +40,7 @@ pub async fn send_output<'a, T>(
 where
     T: Into<Cow<'a, [u8]>>
 {
-    let content = format!("**Process Time:** `{} ms`", elapsed);
+    let content = format!("**Process Time:** `{elapsed} ms`");
     let format = if is_gif { "gif" } else { "png" };
 
     message.channel_id.send_message(ctx,
@@ -52,7 +51,7 @@ where
                 .add_file(
                     AttachmentType::Bytes {
                         data: output.into(),
-                        filename: format!("output.{}", format),
+                        filename: format!("output.{format}"),
                     }
                 )
         }
@@ -84,8 +83,6 @@ where
     ctx: &'a Context,
     /// the invokation message of the command
     message: &'a Message,
-    /// the arguments passed into the command invokation
-    cmd_arg: Option<String>,
     /// the image function to execute
     function: Option<F>,
     /// the maximum width allowed for an image
@@ -103,11 +100,11 @@ where
     A: Send + Sync + 'static,
     F: Fn(ImageArguments<A>) -> ril::Result<Frames> + Send + Sync + 'static,
 {
-    /// creates a new instance of the ImageExecutor with the basic, required information passed
+    /// creates a new instance of [`ImageExecutor`] with the basic, required information passed
     #[must_use]
-    pub const fn new(ctx: &'a Context, message: &'a Message, cmd_arg: Option<String>) -> Self {
+    pub const fn new(ctx: &'a Context, message: &'a Message) -> Self {
         Self {
-            ctx, message, cmd_arg,
+            ctx, message,
             function: None,
             max_width: None,
             max_height: Some(DEFAULT_MAX_DIM),
@@ -156,20 +153,13 @@ where
     }
 
     /// the primary method to call, this basically uses all of the passed information
+    /// it accepts the bytes of the source image which you should resolve beforehand using `ImageResolver`
     /// and proceeds to execute the provided function, with all the wrapping tasks also done here
-    pub async fn run(self) -> CommandResult {
-        let resolved = ImageResolver::new()
-            .resolve(
-                self.ctx,
-                self.message,
-                self.cmd_arg,
-            )
-            .await?;
-
+    pub async fn run(self, bytes: Vec<u8>) -> CommandResult {
         let instant = Instant::now();
         let (result, is_gif) = tokio::task::spawn_blocking(
             move || -> Result<(Vec<u8>, bool), Error> {
-                let mut image = ImageSequence::<Rgba>::from_bytes_inferred(&resolved[..])?
+                let mut image = ImageSequence::<Rgba>::from_bytes_inferred(&bytes[..])?
                     .into_sequence()?;
 
                 let max_frames = self.max_frames

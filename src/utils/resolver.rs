@@ -67,7 +67,9 @@ pub const DEFAULT_MAX_SIZE: u64 = 16_000_000;
 #[derive(Debug, Clone)]
 pub struct ImageResolver {
     /// indicates the max size in bytes that we will accept for the provided image
-    max_size: u64,
+    pub max_size: u64,
+    /// indicates whether or not the image was resolved from an argument
+    pub arg_resolved: bool,
 }
 
 impl Default for ImageResolver {
@@ -83,6 +85,7 @@ impl ImageResolver {
     pub const fn new() -> Self {
         Self {
             max_size: DEFAULT_MAX_SIZE,
+            arg_resolved: true,
         }
     }
 
@@ -136,7 +139,7 @@ impl ImageResolver {
                     .ok_or(Error::InvalidContentType)?
                     .as_str();
 
-                url_to_bytes(client, format!("https://i.imgur.com/{}.gif", imgur_id))
+                url_to_bytes(client, format!("https://i.imgur.com/{imgur_id}.gif"))
                     .await
             } else {
                 Err(Error::InvalidContentType)
@@ -329,7 +332,7 @@ impl ImageResolver {
     }
 
     /// the primary method to call to resolve an image from the provided `context`, `message` and `args`
-    pub async fn resolve(&self, ctx: &Context, message: &Message, arg: Option<String>) -> Result<Vec<u8>, Error> {
+    pub async fn resolve(&mut self, ctx: &Context, message: &Message, arg: Option<String>) -> Result<Vec<u8>, Error> {
         let client_data = ctx.data.read()
             .await;
 
@@ -350,6 +353,8 @@ impl ImageResolver {
             {
                 return bytes;
             }
+
+            self.arg_resolved = false;
         }
 
         if let Some(bytes) =

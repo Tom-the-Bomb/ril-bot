@@ -41,7 +41,7 @@ pub fn humanize_bytes(size: u64) -> String {
 
     for unit in units {
         if size < 1024.0 {
-            return format!("{:.2} {}", size, unit);
+            return format!("{size:.2} {unit}");
         }
 
         size /= 1024.0;

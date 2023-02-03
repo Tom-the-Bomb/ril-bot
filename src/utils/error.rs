@@ -63,24 +63,24 @@ impl fmt::Display for Error {
         f.write_str(
             match self {
                 Self::TooManyFrames(count, max_frames) =>
-                    format!("The provided image has a frame count of `{}` which exceeds the limit of `{}`", count, max_frames),
+                    format!("The provided image has a frame count of `{count}` which exceeds the limit of `{max_frames}`"),
                 Self::ImageTooLarge(size, max_size) =>
                     format!("Provided Image has a size of `{}` which exceeds the limit of `{}`",
                         humanize_bytes(*size),
                         humanize_bytes(*max_size),
                     ),
                 Self::EmojiParseError(argument) =>
-                    format!("An emoji could not be parsed from the provided argument: `{}`", argument),
+                    format!("An emoji could not be parsed from the provided argument: `{argument}`"),
                 Self::FetchUrlError =>
                     String::from("Something went wrong during the HTTP request to the provided URL"),
                 Self::InvalidContentType =>
                     String::from("Only content types of `image/*` are supported"),
                 Self::RequestError(err) =>
-                    format!("{}", err),
+                    err.to_string(),
                 Self::SerenityError(err) =>
-                    format!("{}", err),
+                    err.to_string(),
                 Self::RilError(err) =>
-                    format!("{}", err),
+                    err.to_string(),
             }
             .as_str()
         )

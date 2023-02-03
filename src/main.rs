@@ -28,6 +28,7 @@ use crate::utils::{
     functions::*,
     imaging::ImageExecutor,
     helpers::resolve_arg,
+    resolver::ImageResolver,
 };
 
 mod utils;
@@ -63,7 +64,7 @@ impl TypeMapKey for ClientData {
 #[hook]
 async fn error_handler(ctx: &Context, message: &Message, _cmd_name: &str, result: CommandResult) {
     if let Err(err) = result {
-        message.reply(ctx, format!("{}", err))
+        message.reply(ctx, err.to_string())
             .await
             .ok();
     }
@@ -83,7 +84,8 @@ async fn main() {
 
     let framework = StandardFramework::new()
         .configure(
-            |conf| conf.prefix("r!").with_whitespace(true)
+            |conf| conf.prefix("r!")
+                .with_whitespace(true)
         )
         .after(error_handler)
         .group(&IMAGING_GROUP)
@@ -146,27 +148,51 @@ async fn help_command(
 #[command]
 #[bucket = "imaging"]
 async fn invert(ctx: &Context, message: &Message, mut args: Args) -> CommandResult {
-    ImageExecutor::new(ctx, message, resolve_arg(&mut args))
+    let resolved = ImageResolver::new()
+        .resolve(ctx, message, resolve_arg(&mut args))
+        .await?;
+
+    ImageExecutor::new(ctx, message)
         .function(invert_func)
-        .run()
+        .run(resolved)
         .await
 }
 
 #[command]
 #[bucket = "imaging"]
 async fn huerotate(ctx: &Context, message: &Message, mut args: Args) -> CommandResult {
-    ImageExecutor::new(ctx, message, resolve_arg(&mut args))
+    let resolved = ImageResolver::new()
+        .resolve(ctx, message, resolve_arg(&mut args))
+        .await?;
+
+    ImageExecutor::new(ctx, message)
         .function(huerotate_func)
-        .run()
+        .run(resolved)
         .await
 }
 
 #[command]
 #[bucket = "imaging"]
 async fn caption(ctx: &Context, message: &Message, mut args: Args) -> CommandResult {
-    ImageExecutor::new(ctx, message, resolve_arg(&mut args))
+    let mut resolver = ImageResolver::new();
+    let resolved = resolver
+        .resolve(ctx, message, resolve_arg(&mut args))
+        .await?;
+
+    let mut arg = if resolver.arg_resolved {
+            args.rest().to_string()
+        } else {
+            args.raw().collect::<String>()
+        };
+    arg = if arg.is_empty() {
+            " ".to_string()
+        } else {
+            arg
+        };
+
+    ImageExecutor::new(ctx, message)
         .function(caption_func)
-        .arguments(vec![args.rest().to_string()])
-        .run()
+        .arguments(vec![arg])
+        .run(resolved)
         .await
 }

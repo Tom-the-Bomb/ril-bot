@@ -1,7 +1,17 @@
 [package]
 name = "ril-bot"
+authors = ["Tom-the-Bomb"]
+description = "A simple discord bot powered by serenity-rs with image manipulation function"
+repository = "https://github.com/Tom-the-Bomb/ril-bot"
+license = "MIT"
 version = "0.1.0"
 edition = "2021"
+keywords = ["api", "async"]
+cateories = [
+    "multimedia",
+    "multimedia::images",
+    "web-programming",
+]
 
 [dependencies]
 dotenv = "0.15"

@@ -50,13 +50,13 @@ pub fn caption_func(data: ImageArguments<String>) -> Result<Frames> {
 
     for frame in data.frames {
         let mut layout = TextLayout::new()
-            .with_width((frame.width() as f32 * 0.9) as u32)
+            .with_width((f64::from(frame.width()) * 0.9) as u32)
             .with_wrap(WrapStyle::Word)
             .centered()
             .with_segment(&segment);
 
         let extra_height =
-            (layout.height() as f32 / 9.0 * 10.0) as u32;
+            (f64::from(layout.height()) / 9.0 * 10.0) as u32;
 
         layout = layout
             .with_position(frame.width() / 2, extra_height / 2)
@@ -90,7 +90,7 @@ pub fn contain_size(
     let (w, h) = if let Some(first) =
         frames.first_frame()
     {
-        (first.width() as f32, first.height() as f32)
+        (f64::from(first.width()), f64::from(first.height()))
     } else {
         return Ok(frames);
     };
@@ -98,7 +98,7 @@ pub fn contain_size(
     let resolved_width = width
         .unwrap_or_else(|| {
             if let Some(height) = height {
-                ((height as f32 / h) * w).ceil() as u32
+                ((f64::from(height) / h) * w).ceil() as u32
             } else {
                 w as u32
             }
@@ -107,7 +107,7 @@ pub fn contain_size(
     let resolved_height = height
         .unwrap_or_else(|| {
             if let Some(width) = width {
-                ((width as f32 / w) * h).ceil() as u32
+                ((f64::from(width) / w) * h).ceil() as u32
             } else {
                 h as u32
             }
