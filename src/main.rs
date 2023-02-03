@@ -166,10 +166,7 @@ async fn huerotate(ctx: &Context, message: &Message, mut args: Args) -> CommandR
 async fn caption(ctx: &Context, message: &Message, mut args: Args) -> CommandResult {
     ImageExecutor::new(ctx, message, resolve_arg(&mut args))
         .function(caption_func)
-        .arguments(vec![
-            resolve_arg(&mut args)
-                .unwrap_or_else(|| " ".to_string())
-        ])
+        .arguments(vec![args.rest().to_string()])
         .run()
         .await
 }
