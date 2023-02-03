@@ -27,7 +27,7 @@ use std::collections::HashSet;
 use crate::utils::{
     functions::*,
     imaging::ImageExecutor,
-    helpers::resolve_arg,
+    helpers::{resolve_extra_arg, resolve_arg},
     resolver::ImageResolver,
 };
 
@@ -178,17 +178,9 @@ async fn caption(ctx: &Context, message: &Message, mut args: Args) -> CommandRes
     let resolved = resolver
         .resolve(ctx, message, resolve_arg(&mut args))
         .await?;
-
-    let mut arg = if resolver.arg_resolved {
-            args.rest().to_string()
-        } else {
-            args.raw().collect::<String>()
-        };
-    arg = if arg.is_empty() {
-            " ".to_string()
-        } else {
-            arg
-        };
+    let arg = resolve_extra_arg(
+        resolver.arg_resolved, &mut args
+    );
 
     ImageExecutor::new(ctx, message)
         .function(caption_func)
