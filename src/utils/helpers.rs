@@ -16,7 +16,9 @@ pub fn resolve_extra_arg(img_resolved: bool, args: &mut Args) -> String {
     let arg = if img_resolved {
         args.rest().to_string()
     } else {
-        args.raw().collect::<String>()
+        args.raw()
+            .collect::<Vec<&str>>()
+            .join(" ")
     };
     if arg.is_empty() {
         " ".to_string()
