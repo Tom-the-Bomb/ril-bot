@@ -16,11 +16,17 @@ pub fn invert_func(data: ImageArguments) -> Result<Frames> {
         ImageSequence::<Rgba>::new();
 
     for frame in data.frames {
-        sequence.push_frame(
+        let delay = frame.delay();
+        let disposal = frame.disposal();
+
+        let frame = Frame::from_image(
             frame.into_image()
                 .map_rgb_pixels(|px| px.inverted())
-                .into()
-        );
+        )
+        .with_delay(delay)
+        .with_disposal(disposal);
+
+        sequence.push_frame(frame);
     }
 
     Ok(sequence)
@@ -74,7 +80,11 @@ pub fn caption_func(data: ImageArguments<String>) -> Result<Frames> {
         );
         image.draw(&layout);
         image.paste(0, extra_height, frame.image());
-        sequence.push_frame(Frame::from_image(image));
+
+        let frame = Frame::from_image(image)
+            .with_delay(frame.delay())
+            .with_disposal(frame.disposal());
+        sequence.push_frame(frame);
     }
 
     Ok(sequence)
