@@ -1192,7 +1192,7 @@ dependencies = [
 [[package]]
 name = "ril"
 version = "0.10.0"
-source = "git+https://github.com/jay3332/ril#f36caab1f9547233cea681842ed3163e721c4a77"
+source = "git+https://github.com/jay3332/ril#517dbf5ef8d33728345172a7bc05db92101b433a"
 dependencies = [
  "color_quant",
  "colorgrad",
