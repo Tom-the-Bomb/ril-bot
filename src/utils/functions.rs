@@ -48,7 +48,6 @@ pub fn huerotate_func(data: ImageArguments) -> Result<Frames> {
     Ok(sequence)
 }
 
-
 /// adds a meme caption onto a provided image
 pub fn caption_func(data: ImageArguments<String>) -> Result<Frames> {
     let mut sequence =
