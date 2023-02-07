@@ -3,10 +3,15 @@
 #![allow(clippy::unnecessary_wraps)]
 
 use ril::{prelude::*, Result};
-use super::imaging::{process_gif, Frames, ImageArguments};
+use super::imaging::{
+    process_gif,
+    Frames,
+    ImageArguments,
+};
 
 lazy_static::lazy_static! {
-    static ref IMPACT_FONT: Font = Font::open("./assets/impact.ttf", 30.0).unwrap();
+    static ref IMPACT_FONT: Font = Font::open("./assets/impact.ttf", 30.0)
+        .unwrap();
 }
 
 
@@ -66,7 +71,10 @@ pub fn caption_func(data: ImageArguments<String>) -> Result<Frames> {
 
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let extra_height =
-            (f64::from(layout.height()) / 9.0 * 10.0) as u32;
+            (
+                f64::from(layout.height()) +
+                f64::from(IMPACT_FONT.optimal_size()) / 1.9
+            ) as u32;
 
         layout = layout
             .with_position(frame.width() / 2, extra_height / 2)
